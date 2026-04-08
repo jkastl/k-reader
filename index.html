@@ -12,9 +12,10 @@
       background: linear-gradient(145deg, #7f7fd5, #86a8e7, #91eae4);
       min-height: 100vh;
       display: flex;
+      flex-direction: column;
       align-items: center;
       justify-content: center;
-      padding: 20px;
+      padding: 20px 20px 48px;
     }
 
     /* ── Screens ── */
@@ -119,28 +120,56 @@
     .go-btn:hover  { transform: translateY(-2px); box-shadow: 0 12px 28px rgba(92,63,196,0.4); }
     .go-btn:active { transform: translateY(0); }
 
-    /* ── Card screen ── */
+    /* ── Card screen top bar ── */
     .top-bar {
       width: 100%;
-      display: flex;
-      justify-content: space-between;
+      display: grid;
+      grid-template-columns: auto 1fr auto;
       align-items: center;
+      gap: 10px;
       margin-bottom: 14px;
       color: #fff;
       min-height: 40px;
     }
-    .prog-label {
+    .tb-center {
+      text-align: center;
       font-size: 1em;
       font-weight: 700;
       opacity: 0.92;
     }
+    .tb-right {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      justify-content: flex-end;
+    }
+
+    /* Stop / Pause buttons */
+    .ctrl-btn {
+      background: rgba(255,255,255,0.25);
+      color: #fff;
+      border: none;
+      border-radius: 10px;
+      padding: 7px 13px;
+      font-family: inherit;
+      font-size: 0.88em;
+      font-weight: 700;
+      cursor: pointer;
+      white-space: nowrap;
+      transition: background 0.15s;
+    }
+    .ctrl-btn:hover  { background: rgba(255,255,255,0.4); }
+    .ctrl-btn:active { background: rgba(255,255,255,0.55); }
+    .ctrl-btn.paused-state { background: rgba(255,255,255,0.85); color: #5c3fc4; }
+
     .timer-pill {
-      font-size: 1.45em;
+      font-size: 1.4em;
       font-weight: 900;
       background: rgba(255,255,255,0.28);
-      padding: 5px 18px;
+      padding: 5px 16px;
       border-radius: 999px;
       transition: background 0.3s, color 0.3s;
+      white-space: nowrap;
     }
     .timer-pill.urgent {
       background: rgba(255,255,255,0.95);
@@ -225,6 +254,19 @@
     .done-panel h2 { font-size: 2em; color: #5c3fc4; margin-bottom: 12px; }
     .done-panel p { font-size: 1.1em; color: #666; margin-bottom: 30px; line-height: 1.6; }
 
+    /* ── Version footer ── */
+    .ver-footer {
+      position: fixed;
+      bottom: 10px;
+      left: 0;
+      right: 0;
+      text-align: center;
+      color: rgba(255,255,255,0.55);
+      font-size: 0.75em;
+      pointer-events: none;
+      letter-spacing: 0.04em;
+    }
+
     .hidden { display: none !important; }
   </style>
 </head>
@@ -261,8 +303,17 @@
 <!-- ════════════════ CARD SCREEN ════════════════ -->
 <div id="cards" class="screen">
   <div class="top-bar">
-    <span id="prog-label" class="prog-label"></span>
-    <span id="timer-pill" class="timer-pill hidden"></span>
+    <!-- left -->
+    <button class="ctrl-btn" onclick="stopSession()">⏹ Stop</button>
+    <!-- center -->
+    <div class="tb-center">
+      <span id="prog-label"></span>
+    </div>
+    <!-- right: pause + timer (time mode only) -->
+    <div class="tb-right">
+      <button class="ctrl-btn hidden" id="btn-pause" onclick="togglePause()">⏸ Pause</button>
+      <span id="timer-pill" class="timer-pill hidden"></span>
+    </div>
   </div>
   <div class="prog-track">
     <div id="prog-fill" class="prog-fill" style="width:0%"></div>
@@ -286,6 +337,9 @@
   </div>
 </div>
 
+<!-- ════════════════ VERSION FOOTER ════════════════ -->
+<div class="ver-footer">v1.2 · April 8, 2026</div>
+
 <script>
 // ────────────────────────────────────────────────────────────────────────────
 // WORD GENERATION
@@ -298,24 +352,20 @@
 //   • End consonants: only those that commonly close simple English words
 //       Excluded endings: C (sounds like K → ambiguous), H (silent/rare),
 //       J (never a coda in English), Q, V (rare coda), W (never a coda),
-//       X excluded separately (kept — box, fox, mix are kindergarten staples),
 //       Y (vowel at end), Z (rare coda, often doubled)
-//   • No word where start === end consonant letter AND the vowel produces a
-//     common English word that breaks a simple phonics rule isn't blocked —
-//     the words are allowed to be nonsensical.
+//       X kept — box, fox, mix are kindergarten staples
 // ────────────────────────────────────────────────────────────────────────────
 const C_START = ['b','c','d','f','g','h','j','k','l','m','n','p','r','s','t','v','w','y','z'];
 const VOWELS  = ['a','e','i','o','u'];
 const C_END   = ['b','d','f','g','k','l','m','n','p','r','s','t','x'];
 
 function rnd(arr) { return arr[Math.floor(Math.random() * arr.length)]; }
-
 function makeWord() { return rnd(C_START) + rnd(VOWELS) + rnd(C_END); }
 
 function makeWordList(n) {
   const seen = new Set();
   const list = [];
-  // Max unique CVC words: 19 × 5 × 13 = 1235 — plenty for any session
+  // Max unique CVC words: 19 × 5 × 13 = 1235
   let guard = 0;
   while (list.length < n && guard < n * 20) {
     const w = makeWord();
@@ -329,11 +379,12 @@ function makeWordList(n) {
 // ────────────────────────────────────────────────────────────────────────────
 // STATE
 // ────────────────────────────────────────────────────────────────────────────
-let mode      = 'count';
-let words     = [];
-let idx       = 0;
-let ticker    = null;
-let secsLeft  = 0;
+let mode     = 'count';
+let words    = [];
+let idx      = 0;
+let ticker   = null;
+let secsLeft = 0;
+let paused   = false;
 
 // ────────────────────────────────────────────────────────────────────────────
 // SETUP
@@ -347,12 +398,14 @@ function pickMode(m) {
 }
 
 function startSession() {
+  paused = false;
   if (mode === 'count') {
     const n = parseInt(document.getElementById('num-cards').value, 10);
     if (!n || n < 1 || n > 100) { alert('Please enter a number between 1 and 100.'); return; }
     words = makeWordList(n);
     idx = 0;
     showScreen('cards');
+    document.getElementById('btn-pause').classList.add('hidden');
     document.getElementById('timer-pill').classList.add('hidden');
     renderCard();
   } else {
@@ -362,6 +415,9 @@ function startSession() {
     idx = 0;
     secsLeft = m * 60;
     showScreen('cards');
+    document.getElementById('btn-pause').classList.remove('hidden');
+    document.getElementById('btn-pause').textContent = '⏸ Pause';
+    document.getElementById('btn-pause').classList.remove('paused-state');
     document.getElementById('timer-pill').classList.remove('hidden');
     renderCard();
     startTicker();
@@ -371,12 +427,11 @@ function startSession() {
 // ────────────────────────────────────────────────────────────────────────────
 // CARD RENDERING
 // ────────────────────────────────────────────────────────────────────────────
-function renderCard(skipAnim) {
+function renderCard() {
   const card = document.getElementById('flash-card');
 
   const update = () => {
     const w = words[idx];
-    // Colour letters: consonants purple, vowel red
     const [c1, v, c2] = [w[0], w[1], w[2]];
     document.getElementById('word-display').innerHTML =
       `<span class="letter-c">${c1.toUpperCase()}</span>` +
@@ -395,14 +450,14 @@ function renderCard(skipAnim) {
     card.classList.remove('fading');
   };
 
-  if (skipAnim) { update(); return; }
   card.classList.add('fading');
   setTimeout(update, 140);
 }
 
 function goNext() {
   if (mode === 'count' && idx >= words.length - 1) { endSession(); return; }
-  if (idx >= words.length - 30) words = words.concat(makeWordList(150)); // extend time-mode pool
+  // Extend pool only in time mode when running low
+  if (mode === 'time' && idx >= words.length - 30) words = words.concat(makeWordList(150));
   idx++;
   renderCard();
 }
@@ -431,11 +486,29 @@ function updatePill() {
   pill.classList.toggle('urgent', secsLeft <= 10);
 }
 
+function togglePause() {
+  paused = !paused;
+  const btn = document.getElementById('btn-pause');
+  if (paused) {
+    clearInterval(ticker);
+    ticker = null;
+    btn.textContent = '▶ Resume';
+    btn.classList.add('paused-state');
+  } else {
+    btn.textContent = '⏸ Pause';
+    btn.classList.remove('paused-state');
+    startTicker();
+  }
+}
+
 // ────────────────────────────────────────────────────────────────────────────
-// END / RESTART
+// STOP / END / RESTART
 // ────────────────────────────────────────────────────────────────────────────
+function stopSession() { endSession(); }
+
 function endSession() {
   if (ticker) { clearInterval(ticker); ticker = null; }
+  paused = false;
   const count = mode === 'count' ? words.length : idx + 1;
   document.getElementById('done-msg').textContent =
     `You practiced ${count} word${count !== 1 ? 's' : ''}!\nKeep up the amazing work! 🎈`;
