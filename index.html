@@ -1,0 +1,453 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Word Flashcards</title>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      font-family: 'Nunito', 'Comic Sans MS', 'Chalkboard SE', cursive, sans-serif;
+      background: linear-gradient(145deg, #7f7fd5, #86a8e7, #91eae4);
+      min-height: 100vh;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 20px;
+    }
+
+    /* ── Screens ── */
+    .screen {
+      display: none;
+      flex-direction: column;
+      align-items: center;
+      width: 100%;
+      max-width: 520px;
+    }
+    .screen.active { display: flex; }
+
+    /* ── Setup screen ── */
+    .page-title {
+      color: #fff;
+      font-size: clamp(2em, 7vw, 3em);
+      text-align: center;
+      font-weight: 900;
+      margin-bottom: 6px;
+      text-shadow: 0 4px 10px rgba(0,0,0,0.2);
+    }
+    .page-sub {
+      color: rgba(255,255,255,0.85);
+      font-size: 1.05em;
+      margin-bottom: 28px;
+      text-align: center;
+    }
+
+    .panel {
+      background: #fff;
+      border-radius: 26px;
+      padding: 36px 32px;
+      width: 100%;
+      box-shadow: 0 24px 60px rgba(0,0,0,0.18);
+    }
+    .panel h2 {
+      text-align: center;
+      color: #555;
+      font-size: 1.2em;
+      margin-bottom: 22px;
+    }
+
+    .mode-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 12px;
+      margin-bottom: 26px;
+    }
+    .mode-btn {
+      padding: 18px 10px 14px;
+      border: 2.5px solid #e2e2e2;
+      border-radius: 16px;
+      background: #fafafa;
+      font-family: inherit;
+      font-size: 0.95em;
+      color: #666;
+      cursor: pointer;
+      transition: all 0.18s;
+    }
+    .mode-btn .icon { font-size: 2em; display: block; margin-bottom: 6px; }
+    .mode-btn.selected {
+      border-color: #7f7fd5;
+      background: #f2f0ff;
+      color: #5c3fc4;
+      font-weight: 700;
+    }
+
+    .field { margin-bottom: 22px; }
+    .field label {
+      display: block;
+      margin-bottom: 8px;
+      color: #666;
+      font-size: 0.95em;
+    }
+    .field input {
+      width: 100%;
+      padding: 14px;
+      border: 2px solid #e2e2e2;
+      border-radius: 12px;
+      font-size: 1.5em;
+      font-family: inherit;
+      text-align: center;
+      outline: none;
+      transition: border-color 0.2s;
+    }
+    .field input:focus { border-color: #7f7fd5; }
+
+    .go-btn {
+      width: 100%;
+      padding: 18px;
+      background: linear-gradient(135deg, #7f7fd5, #5c3fc4);
+      color: #fff;
+      border: none;
+      border-radius: 14px;
+      font-size: 1.25em;
+      font-family: inherit;
+      font-weight: 800;
+      cursor: pointer;
+      box-shadow: 0 8px 22px rgba(92,63,196,0.35);
+      transition: transform 0.12s, box-shadow 0.12s;
+    }
+    .go-btn:hover  { transform: translateY(-2px); box-shadow: 0 12px 28px rgba(92,63,196,0.4); }
+    .go-btn:active { transform: translateY(0); }
+
+    /* ── Card screen ── */
+    .top-bar {
+      width: 100%;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 14px;
+      color: #fff;
+      min-height: 40px;
+    }
+    .prog-label {
+      font-size: 1em;
+      font-weight: 700;
+      opacity: 0.92;
+    }
+    .timer-pill {
+      font-size: 1.45em;
+      font-weight: 900;
+      background: rgba(255,255,255,0.28);
+      padding: 5px 18px;
+      border-radius: 999px;
+      transition: background 0.3s, color 0.3s;
+    }
+    .timer-pill.urgent {
+      background: rgba(255,255,255,0.95);
+      color: #e53935;
+    }
+
+    .prog-track {
+      width: 100%;
+      height: 10px;
+      background: rgba(255,255,255,0.3);
+      border-radius: 5px;
+      margin-bottom: 22px;
+      overflow: hidden;
+    }
+    .prog-fill {
+      height: 100%;
+      background: #fff;
+      border-radius: 5px;
+      transition: width 0.4s ease;
+    }
+
+    .flash-card {
+      background: #fff;
+      border-radius: 26px;
+      width: 100%;
+      padding: 64px 32px;
+      text-align: center;
+      box-shadow: 0 24px 60px rgba(0,0,0,0.18);
+      margin-bottom: 22px;
+      transition: opacity 0.14s ease;
+    }
+    .flash-card.fading { opacity: 0; }
+
+    .word {
+      font-size: clamp(4.5em, 22vw, 8.5em);
+      font-weight: 900;
+      color: #2b2b2b;
+      letter-spacing: 0.07em;
+      line-height: 1;
+      user-select: none;
+    }
+    .word .letter-c { color: #5c3fc4; }
+    .word .letter-v { color: #e53935; }
+
+    .nav-row {
+      display: grid;
+      grid-template-columns: 1fr 2.2fr;
+      gap: 12px;
+      width: 100%;
+    }
+    .nav-btn {
+      padding: 18px;
+      border: none;
+      border-radius: 14px;
+      font-family: inherit;
+      font-weight: 800;
+      font-size: 1.1em;
+      cursor: pointer;
+      transition: transform 0.1s;
+    }
+    .nav-btn:active { transform: scale(0.97); }
+    .btn-back {
+      background: rgba(255,255,255,0.85);
+      color: #555;
+    }
+    .btn-next {
+      background: linear-gradient(135deg, #7f7fd5, #5c3fc4);
+      color: #fff;
+      box-shadow: 0 6px 20px rgba(92,63,196,0.3);
+    }
+
+    /* ── Done screen ── */
+    .done-panel {
+      background: #fff;
+      border-radius: 26px;
+      padding: 52px 36px;
+      width: 100%;
+      text-align: center;
+      box-shadow: 0 24px 60px rgba(0,0,0,0.18);
+    }
+    .done-emoji { font-size: 4.5em; display: block; margin-bottom: 14px; }
+    .done-panel h2 { font-size: 2em; color: #5c3fc4; margin-bottom: 12px; }
+    .done-panel p { font-size: 1.1em; color: #666; margin-bottom: 30px; line-height: 1.6; }
+
+    .hidden { display: none !important; }
+  </style>
+</head>
+<body>
+
+<!-- ════════════════ SETUP SCREEN ════════════════ -->
+<div id="setup" class="screen active">
+  <p class="page-title">📖 Word Cards</p>
+  <p class="page-sub">Practice reading 3-letter words!</p>
+  <div class="panel">
+    <h2>How would you like to practice?</h2>
+    <div class="mode-grid">
+      <button class="mode-btn selected" id="btn-count" onclick="pickMode('count')">
+        <span class="icon">🃏</span>Number of Cards
+      </button>
+      <button class="mode-btn" id="btn-time" onclick="pickMode('time')">
+        <span class="icon">⏱️</span>By Time
+      </button>
+    </div>
+
+    <div id="count-field" class="field">
+      <label for="num-cards">How many cards? (1 – 100)</label>
+      <input type="number" id="num-cards" min="1" max="100" value="10">
+    </div>
+    <div id="time-field" class="field hidden">
+      <label for="num-mins">How many minutes? (1 – 30)</label>
+      <input type="number" id="num-mins" min="1" max="30" value="5">
+    </div>
+
+    <button class="go-btn" onclick="startSession()">Let's Go! 🚀</button>
+  </div>
+</div>
+
+<!-- ════════════════ CARD SCREEN ════════════════ -->
+<div id="cards" class="screen">
+  <div class="top-bar">
+    <span id="prog-label" class="prog-label"></span>
+    <span id="timer-pill" class="timer-pill hidden"></span>
+  </div>
+  <div class="prog-track">
+    <div id="prog-fill" class="prog-fill" style="width:0%"></div>
+  </div>
+  <div class="flash-card" id="flash-card">
+    <div id="word-display" class="word"></div>
+  </div>
+  <div class="nav-row">
+    <button class="nav-btn btn-back" onclick="goBack()">◀ Back</button>
+    <button class="nav-btn btn-next" id="btn-next" onclick="goNext()">Next ▶</button>
+  </div>
+</div>
+
+<!-- ════════════════ DONE SCREEN ════════════════ -->
+<div id="done" class="screen">
+  <div class="done-panel">
+    <span class="done-emoji">🌟</span>
+    <h2>Great Job!</h2>
+    <p id="done-msg"></p>
+    <button class="go-btn" onclick="goHome()">Play Again! 🎉</button>
+  </div>
+</div>
+
+<script>
+// ────────────────────────────────────────────────────────────────────────────
+// WORD GENERATION
+// Pattern: Consonant – Vowel – Consonant  (CVC)
+//
+// Rules applied:
+//   • No Q anywhere (confusing sound, rare use)
+//   • No X at start (uncommon English onset)
+//   • Start consonants: all single consonants minus Q, X
+//   • End consonants: only those that commonly close simple English words
+//       Excluded endings: C (sounds like K → ambiguous), H (silent/rare),
+//       J (never a coda in English), Q, V (rare coda), W (never a coda),
+//       X excluded separately (kept — box, fox, mix are kindergarten staples),
+//       Y (vowel at end), Z (rare coda, often doubled)
+//   • No word where start === end consonant letter AND the vowel produces a
+//     common English word that breaks a simple phonics rule isn't blocked —
+//     the words are allowed to be nonsensical.
+// ────────────────────────────────────────────────────────────────────────────
+const C_START = ['b','c','d','f','g','h','j','k','l','m','n','p','r','s','t','v','w','y','z'];
+const VOWELS  = ['a','e','i','o','u'];
+const C_END   = ['b','d','f','g','k','l','m','n','p','r','s','t','x'];
+
+function rnd(arr) { return arr[Math.floor(Math.random() * arr.length)]; }
+
+function makeWord() { return rnd(C_START) + rnd(VOWELS) + rnd(C_END); }
+
+function makeWordList(n) {
+  const seen = new Set();
+  const list = [];
+  // Max unique CVC words: 19 × 5 × 13 = 1235 — plenty for any session
+  let guard = 0;
+  while (list.length < n && guard < n * 20) {
+    const w = makeWord();
+    if (!seen.has(w)) { seen.add(w); list.push(w); }
+    guard++;
+  }
+  while (list.length < n) list.push(makeWord()); // fallback (repeats) if needed
+  return list;
+}
+
+// ────────────────────────────────────────────────────────────────────────────
+// STATE
+// ────────────────────────────────────────────────────────────────────────────
+let mode      = 'count';
+let words     = [];
+let idx       = 0;
+let ticker    = null;
+let secsLeft  = 0;
+
+// ────────────────────────────────────────────────────────────────────────────
+// SETUP
+// ────────────────────────────────────────────────────────────────────────────
+function pickMode(m) {
+  mode = m;
+  document.getElementById('btn-count').classList.toggle('selected', m === 'count');
+  document.getElementById('btn-time').classList.toggle('selected', m === 'time');
+  document.getElementById('count-field').classList.toggle('hidden', m !== 'count');
+  document.getElementById('time-field').classList.toggle('hidden', m !== 'time');
+}
+
+function startSession() {
+  if (mode === 'count') {
+    const n = parseInt(document.getElementById('num-cards').value, 10);
+    if (!n || n < 1 || n > 100) { alert('Please enter a number between 1 and 100.'); return; }
+    words = makeWordList(n);
+    idx = 0;
+    showScreen('cards');
+    document.getElementById('timer-pill').classList.add('hidden');
+    renderCard();
+  } else {
+    const m = parseInt(document.getElementById('num-mins').value, 10);
+    if (!m || m < 1 || m > 30) { alert('Please enter a number between 1 and 30.'); return; }
+    words = makeWordList(700);
+    idx = 0;
+    secsLeft = m * 60;
+    showScreen('cards');
+    document.getElementById('timer-pill').classList.remove('hidden');
+    renderCard();
+    startTicker();
+  }
+}
+
+// ────────────────────────────────────────────────────────────────────────────
+// CARD RENDERING
+// ────────────────────────────────────────────────────────────────────────────
+function renderCard(skipAnim) {
+  const card = document.getElementById('flash-card');
+
+  const update = () => {
+    const w = words[idx];
+    // Colour letters: consonants purple, vowel red
+    const [c1, v, c2] = [w[0], w[1], w[2]];
+    document.getElementById('word-display').innerHTML =
+      `<span class="letter-c">${c1.toUpperCase()}</span>` +
+      `<span class="letter-v">${v.toUpperCase()}</span>` +
+      `<span class="letter-c">${c2.toUpperCase()}</span>`;
+
+    if (mode === 'count') {
+      document.getElementById('prog-label').textContent = `Card ${idx + 1} / ${words.length}`;
+      document.getElementById('prog-fill').style.width = ((idx + 1) / words.length * 100) + '%';
+      document.getElementById('btn-next').textContent = idx === words.length - 1 ? 'Finish ✓' : 'Next ▶';
+    } else {
+      document.getElementById('prog-label').textContent = `Card ${idx + 1}`;
+      document.getElementById('prog-fill').style.width = '0%';
+      document.getElementById('btn-next').textContent = 'Next ▶';
+    }
+    card.classList.remove('fading');
+  };
+
+  if (skipAnim) { update(); return; }
+  card.classList.add('fading');
+  setTimeout(update, 140);
+}
+
+function goNext() {
+  if (mode === 'count' && idx >= words.length - 1) { endSession(); return; }
+  if (idx >= words.length - 30) words = words.concat(makeWordList(150)); // extend time-mode pool
+  idx++;
+  renderCard();
+}
+
+function goBack() {
+  if (idx > 0) { idx--; renderCard(); }
+}
+
+// ────────────────────────────────────────────────────────────────────────────
+// TIMER
+// ────────────────────────────────────────────────────────────────────────────
+function startTicker() {
+  updatePill();
+  ticker = setInterval(() => {
+    secsLeft--;
+    updatePill();
+    if (secsLeft <= 0) endSession();
+  }, 1000);
+}
+
+function updatePill() {
+  const m = Math.floor(secsLeft / 60);
+  const s = String(secsLeft % 60).padStart(2, '0');
+  const pill = document.getElementById('timer-pill');
+  pill.textContent = `${m}:${s}`;
+  pill.classList.toggle('urgent', secsLeft <= 10);
+}
+
+// ────────────────────────────────────────────────────────────────────────────
+// END / RESTART
+// ────────────────────────────────────────────────────────────────────────────
+function endSession() {
+  if (ticker) { clearInterval(ticker); ticker = null; }
+  const count = mode === 'count' ? words.length : idx + 1;
+  document.getElementById('done-msg').textContent =
+    `You practiced ${count} word${count !== 1 ? 's' : ''}!\nKeep up the amazing work! 🎈`;
+  showScreen('done');
+}
+
+function goHome() { showScreen('setup'); }
+
+function showScreen(id) {
+  document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
+  document.getElementById(id).classList.add('active');
+}
+</script>
+</body>
+</html>
