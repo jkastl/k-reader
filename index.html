@@ -4,6 +4,7 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Word Flashcards</title>
+  <meta name="description" content="Flashcards for early readers practicing simple consonant-vowel-consonant words.">
   <style>
     *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 
@@ -235,6 +236,7 @@
       background: rgba(255,255,255,0.85);
       color: #555;
     }
+    .btn-back:disabled { opacity: 0.5; cursor: default; transform: none; }
     .btn-next {
       background: linear-gradient(135deg, #7f7fd5, #5c3fc4);
       color: #fff;
@@ -252,7 +254,7 @@
     }
     .done-emoji { font-size: 4.5em; display: block; margin-bottom: 14px; }
     .done-panel h2 { font-size: 2em; color: #5c3fc4; margin-bottom: 12px; }
-    .done-panel p { font-size: 1.1em; color: #666; margin-bottom: 30px; line-height: 1.6; }
+    .done-panel p { font-size: 1.1em; color: #666; margin-bottom: 30px; line-height: 1.6; white-space: pre-line; }
 
     /* ── Version footer ── */
     .ver-footer {
@@ -274,7 +276,7 @@
 
 <!-- ════════════════ SETUP SCREEN ════════════════ -->
 <div id="setup" class="screen active">
-  <p class="page-title">📖 Word Cards</p>
+  <h1 class="page-title">📖 Word Cards</h1>
   <p class="page-sub">Practice reading 3-letter words!</p>
   <div class="panel">
     <h2>How would you like to practice?</h2>
@@ -304,7 +306,7 @@
 <div id="cards" class="screen">
   <div class="top-bar">
     <!-- left -->
-    <button class="ctrl-btn" onclick="stopSession()">⏹ Stop</button>
+    <button class="ctrl-btn" onclick="endSession()">⏹ Stop</button>
     <!-- center -->
     <div class="tb-center">
       <span id="prog-label"></span>
@@ -322,7 +324,7 @@
     <div id="word-display" class="word"></div>
   </div>
   <div class="nav-row">
-    <button class="nav-btn btn-back" onclick="goBack()">◀ Back</button>
+    <button class="nav-btn btn-back" id="btn-back" onclick="goBack()">◀ Back</button>
     <button class="nav-btn btn-next" id="btn-next" onclick="goNext()">Next ▶</button>
   </div>
 </div>
@@ -338,7 +340,8 @@
 </div>
 
 <!-- ════════════════ VERSION FOOTER ════════════════ -->
-<div class="ver-footer">v1.2 · April 8, 2026</div>
+<!-- Version and date are bumped by hand; see README.md. -->
+<div class="ver-footer">v1.3.0 · 2026-09-26</div>
 
 <script>
 // ────────────────────────────────────────────────────────────────────────────
@@ -352,20 +355,38 @@
 //   • End consonants: only those that commonly close simple English words
 //       Excluded endings: C (sounds like K → ambiguous), H (silent/rare),
 //       J (never a coda in English), Q, V (rare coda), W (never a coda),
-//       Y (vowel at end), Z (rare coda, often doubled)
+//       Y (vowel at end), Z (rare coda, often doubled),
+//       R (makes an r-controlled vowel — bar, her, fur — taught after short vowels)
 //       X kept — box, fox, mix are kindergarten staples
+//   • No C before E or I (soft C: "cen" reads as "sen", breaking the hard-C pattern)
+//   • No words on BLOCKED (slurs, sexual terms and misspellings of them)
 // ────────────────────────────────────────────────────────────────────────────
 const C_START = ['b','c','d','f','g','h','j','k','l','m','n','p','r','s','t','v','w','y','z'];
 const VOWELS  = ['a','e','i','o','u'];
-const C_END   = ['b','d','f','g','k','l','m','n','p','r','s','t','x'];
+const C_END   = ['b','d','f','g','k','l','m','n','p','s','t','x'];
+
+const BLOCKED = new Set([
+  'cok', 'cum', 'dik', 'dix', 'fag', 'fap', 'fuk', 'fux', 'jap', 'kok',
+  'kum', 'nig', 'pis', 'sex', 'sux', 'tit', 'wog', 'wop',
+]);
 
 function rnd(arr) { return arr[Math.floor(Math.random() * arr.length)]; }
-function makeWord() { return rnd(C_START) + rnd(VOWELS) + rnd(C_END); }
+
+function isAllowed(w) {
+  if (w[0] === 'c' && (w[1] === 'e' || w[1] === 'i')) return false;
+  return !BLOCKED.has(w);
+}
+
+function makeWord() {
+  let w;
+  do { w = rnd(C_START) + rnd(VOWELS) + rnd(C_END); } while (!isAllowed(w));
+  return w;
+}
 
 function makeWordList(n) {
   const seen = new Set();
   const list = [];
-  // Max unique CVC words: 19 × 5 × 13 = 1235
+  // Max unique CVC words: 19 × 5 × 12 = 1140, minus the ones isAllowed() rejects
   let guard = 0;
   while (list.length < n && guard < n * 20) {
     const w = makeWord();
@@ -398,30 +419,29 @@ function pickMode(m) {
 }
 
 function startSession() {
-  paused = false;
-  if (mode === 'count') {
-    const n = parseInt(document.getElementById('num-cards').value, 10);
-    if (!n || n < 1 || n > 100) { alert('Please enter a number between 1 and 100.'); return; }
-    words = makeWordList(n);
-    idx = 0;
-    showScreen('cards');
-    document.getElementById('btn-pause').classList.add('hidden');
-    document.getElementById('timer-pill').classList.add('hidden');
-    renderCard();
-  } else {
+  const timed = mode === 'time';
+  if (timed) {
     const m = parseInt(document.getElementById('num-mins').value, 10);
     if (!m || m < 1 || m > 30) { alert('Please enter a number between 1 and 30.'); return; }
     words = makeWordList(700);
-    idx = 0;
     secsLeft = m * 60;
-    showScreen('cards');
-    document.getElementById('btn-pause').classList.remove('hidden');
-    document.getElementById('btn-pause').textContent = '⏸ Pause';
-    document.getElementById('btn-pause').classList.remove('paused-state');
-    document.getElementById('timer-pill').classList.remove('hidden');
-    renderCard();
-    startTicker();
+  } else {
+    const n = parseInt(document.getElementById('num-cards').value, 10);
+    if (!n || n < 1 || n > 100) { alert('Please enter a number between 1 and 100.'); return; }
+    words = makeWordList(n);
   }
+  idx = 0;
+  paused = false;
+
+  const pauseBtn = document.getElementById('btn-pause');
+  pauseBtn.textContent = '⏸ Pause';
+  pauseBtn.classList.remove('paused-state');
+  pauseBtn.classList.toggle('hidden', !timed);
+  document.getElementById('timer-pill').classList.toggle('hidden', !timed);
+
+  showScreen('cards');
+  renderCard();
+  if (timed) startTicker();
 }
 
 // ────────────────────────────────────────────────────────────────────────────
@@ -432,7 +452,7 @@ function renderCard() {
 
   const update = () => {
     const w = words[idx];
-    const [c1, v, c2] = [w[0], w[1], w[2]];
+    const [c1, v, c2] = w;
     document.getElementById('word-display').innerHTML =
       `<span class="letter-c">${c1.toUpperCase()}</span>` +
       `<span class="letter-v">${v.toUpperCase()}</span>` +
@@ -447,6 +467,7 @@ function renderCard() {
       document.getElementById('prog-fill').style.width = '0%';
       document.getElementById('btn-next').textContent = 'Next ▶';
     }
+    document.getElementById('btn-back').disabled = idx === 0;
     card.classList.remove('fading');
   };
 
@@ -504,12 +525,11 @@ function togglePause() {
 // ────────────────────────────────────────────────────────────────────────────
 // STOP / END / RESTART
 // ────────────────────────────────────────────────────────────────────────────
-function stopSession() { endSession(); }
-
 function endSession() {
   if (ticker) { clearInterval(ticker); ticker = null; }
   paused = false;
-  const count = mode === 'count' ? words.length : idx + 1;
+  // Cards actually seen, so stopping early doesn't claim the whole deck.
+  const count = idx + 1;
   document.getElementById('done-msg').textContent =
     `You practiced ${count} word${count !== 1 ? 's' : ''}!\nKeep up the amazing work! 🎈`;
   showScreen('done');
