@@ -2,6 +2,12 @@
 
 Versions follow [semver](https://semver.org/). See [README.md](README.md#versioning).
 
+## 1.4.1 · 2026-09-26
+
+### Changed
+- The setup screen, page description and README say who the app is for: beginning
+  readers at a kindergarten (K) reading level.
+
 ## 1.4.0 · 2026-09-26
 
 ### Added

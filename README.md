@@ -1,7 +1,7 @@
 # Word Flashcards
 
-Flashcards for early readers practicing simple three-letter words: consonant, vowel,
-consonant (CVC), like **cat**, **fox** and **sun**.
+Flashcards for beginning readers at a kindergarten (K) reading level, practicing simple
+three-letter words: consonant, vowel, consonant (CVC), like **cat**, **fox** and **sun**.
 
 **[jkastl.github.io/k-reader](https://jkastl.github.io/k-reader/)**
 

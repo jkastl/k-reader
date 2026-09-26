@@ -4,7 +4,7 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Word Flashcards</title>
-  <meta name="description" content="Flashcards for early readers practicing simple consonant-vowel-consonant words.">
+  <meta name="description" content="Flashcards for beginning readers at a kindergarten (K) reading level, practicing simple consonant-vowel-consonant words.">
   <style>
     *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 
@@ -43,6 +43,12 @@
       font-size: 1.05em;
       margin-bottom: 28px;
       text-align: center;
+    }
+    .page-level {
+      display: inline-block;
+      margin-top: 4px;
+      font-size: 0.8em;
+      color: rgba(255,255,255,0.7);
     }
 
     .panel {
@@ -277,7 +283,7 @@
 <!-- ════════════════ SETUP SCREEN ════════════════ -->
 <div id="setup" class="screen active">
   <h1 class="page-title">📖 Word Cards</h1>
-  <p class="page-sub">Practice reading 3-letter words!</p>
+  <p class="page-sub">Practice reading 3-letter words!<br><span class="page-level">For beginning readers · Kindergarten (K) reading level</span></p>
   <div class="panel">
     <h2>How would you like to practice?</h2>
     <div class="mode-grid">
@@ -341,7 +347,7 @@
 
 <!-- ════════════════ VERSION FOOTER ════════════════ -->
 <!-- Version and date are bumped by hand; see README.md. -->
-<div class="ver-footer">v1.4.0 · 2026-09-26</div>
+<div class="ver-footer">v1.4.1 · 2026-09-26</div>
 
 <script>
 // ────────────────────────────────────────────────────────────────────────────
