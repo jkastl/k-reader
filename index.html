@@ -341,7 +341,7 @@
 
 <!-- ════════════════ VERSION FOOTER ════════════════ -->
 <!-- Version and date are bumped by hand; see README.md. -->
-<div class="ver-footer">v1.3.0 · 2026-09-26</div>
+<div class="ver-footer">v1.4.0 · 2026-09-26</div>
 
 <script>
 // ────────────────────────────────────────────────────────────────────────────
@@ -359,22 +359,28 @@
 //       R (makes an r-controlled vowel — bar, her, fur — taught after short vowels)
 //       X kept — box, fox, mix are kindergarten staples
 //   • No C before E or I (soft C: "cen" reads as "sen", breaking the hard-C pattern)
-//   • No words on BLOCKED (slurs, sexual terms and misspellings of them)
+//   • No words on BLOCKED (slurs, sexual terms and misspellings of them; ROT13-encoded)
 // ────────────────────────────────────────────────────────────────────────────
 const C_START = ['b','c','d','f','g','h','j','k','l','m','n','p','r','s','t','v','w','y','z'];
 const VOWELS  = ['a','e','i','o','u'];
 const C_END   = ['b','d','f','g','k','l','m','n','p','s','t','x'];
 
+// ROT13-encoded so the list isn't sitting in the source as plain text.
+// To add a word, ROT13 it first (rot13('abc') in the console gives 'nop').
 const BLOCKED = new Set([
-  'cok', 'cum', 'dik', 'dix', 'fag', 'fap', 'fuk', 'fux', 'jap', 'kok',
-  'kum', 'nig', 'pis', 'sex', 'sux', 'tit', 'wog', 'wop',
+  'pbx', 'phz', 'qvx', 'qvk', 'snt', 'snc', 'shx', 'shk', 'wnc', 'xbx',
+  'xhz', 'avt', 'cvf', 'frk', 'fhk', 'gvg', 'jbt', 'jbc',
 ]);
+
+function rot13(w) {
+  return w.replace(/[a-z]/g, c => String.fromCharCode((c.charCodeAt(0) - 97 + 13) % 26 + 97));
+}
 
 function rnd(arr) { return arr[Math.floor(Math.random() * arr.length)]; }
 
 function isAllowed(w) {
   if (w[0] === 'c' && (w[1] === 'e' || w[1] === 'i')) return false;
-  return !BLOCKED.has(w);
+  return !BLOCKED.has(rot13(w));
 }
 
 function makeWord() {
@@ -476,6 +482,7 @@ function renderCard() {
 }
 
 function goNext() {
+  if (paused) togglePause();
   if (mode === 'count' && idx >= words.length - 1) { endSession(); return; }
   // Extend pool only in time mode when running low
   if (mode === 'time' && idx >= words.length - 30) words = words.concat(makeWordList(150));
@@ -536,6 +543,37 @@ function endSession() {
 }
 
 function goHome() { showScreen('setup'); }
+
+// ────────────────────────────────────────────────────────────────────────────
+// KEYBOARD
+//   Cards: → / Space / Enter = Next, ← = Back, P = Pause/Resume, Esc = Stop
+//   Setup: Enter = Let's Go    Done: Enter / Space = Play Again
+// ────────────────────────────────────────────────────────────────────────────
+function activeScreen() { return document.querySelector('.screen.active').id; }
+
+document.addEventListener('keydown', e => {
+  if (e.repeat || e.altKey || e.ctrlKey || e.metaKey) return;
+  // A focused button handles its own Enter/Space (e.g. tabbing to Stop and pressing Enter).
+  if ((e.key === 'Enter' || e.key === ' ') && e.target.tagName === 'BUTTON') return;
+  const screen = activeScreen();
+  let action = null;
+
+  if (screen === 'cards') {
+    if (['ArrowRight', ' ', 'Enter'].includes(e.key)) action = goNext;
+    else if (e.key === 'ArrowLeft') action = goBack;
+    else if (e.key === 'Escape') action = endSession;
+    else if ((e.key === 'p' || e.key === 'P') && mode === 'time') action = togglePause;
+  } else if (screen === 'setup' && e.key === 'Enter') {
+    action = startSession;
+  } else if (screen === 'done' && (e.key === 'Enter' || e.key === ' ')) {
+    action = goHome;
+  }
+
+  if (action) {
+    e.preventDefault(); // keep Space from scrolling the page
+    action();
+  }
+});
 
 function showScreen(id) {
   document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));

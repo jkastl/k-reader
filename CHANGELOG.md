@@ -2,6 +2,16 @@
 
 Versions follow [semver](https://semver.org/). See [README.md](README.md#versioning).
 
+## 1.4.0 · 2026-09-26
+
+### Added
+- Keyboard controls: → / Space / Enter for Next, ← for Back, P to pause, Esc to stop,
+  and Enter to start or play again. Holding a key down doesn't skip through cards.
+
+### Changed
+- Pressing **Next** while paused resumes the timer.
+- The blocked-word list is stored ROT13-encoded instead of in plain text.
+
 ## 1.3.0 · 2026-09-26
 
 ### Fixed
@@ -10,8 +20,7 @@ Versions follow [semver](https://semver.org/). See [README.md](README.md#version
 - The done screen's two-line message now shows on two lines.
 
 ### Changed
-- Words that are slurs or sexual terms (for example FAG, SEX, TIT) can no longer
-  appear. They're listed in `BLOCKED` in `index.html`.
+- Words that are slurs or sexual terms can no longer appear. They're listed in `BLOCKED` in `index.html`.
 - Soft-C words (C before E or I, like CEN or CIP) no longer appear.
 - Words ending in R (BAR, HER, FUR) no longer appear, so every card is a short vowel.
 - **Back** is disabled on the first card.
