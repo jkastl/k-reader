@@ -5,8 +5,8 @@ three-letter words: consonant, vowel, consonant (CVC), like **cat**, **fox** and
 
 **[jkastl.github.io/k-reader](https://jkastl.github.io/k-reader/)**
 
-One file, no build step, no dependencies, no network calls beyond an anonymous visit count
-([GoatCounter](https://www.goatcounter.com/), no cookies). The whole app is
+One file, no build step, no dependencies, no backend. The page loads an anonymous
+[GoatCounter](https://www.goatcounter.com/) visit counter (no cookies) and works without it. The whole app is
 [`index.html`](index.html), served by GitHub Pages from `main`.
 
 ## Using it
